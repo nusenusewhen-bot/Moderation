@@ -15,10 +15,13 @@ const ROLE_WARN = "1467183999146528962";
 const ROLE_KICK = "1467184107594186843";
 const ROLE_BAN  = "1467184373496283348";
 
-const PREFIX = "$";
+// PREFIX (CHANGED HERE)
+const PREFIX = "+";
+
+// WARN FILE
 const WARN_FILE = "./warns.json";
 
-// Load warns safely
+// LOAD WARNS
 let warns = {};
 if (fs.existsSync(WARN_FILE)) {
   warns = JSON.parse(fs.readFileSync(WARN_FILE, "utf8"));
@@ -26,7 +29,7 @@ if (fs.existsSync(WARN_FILE)) {
   fs.writeFileSync(WARN_FILE, JSON.stringify({}, null, 2));
 }
 
-// Save warns function
+// SAVE WARNS
 function saveWarns() {
   fs.writeFileSync(WARN_FILE, JSON.stringify(warns, null, 2));
 }
@@ -52,15 +55,15 @@ client.on("messageCreate", async (message) => {
     if (!hasRole(ROLE_WARN)) return;
     return message.reply(
 `**Commands**
-$warn @user – warn user
-$warns @user – check warns
-$clearwarn @user – reset warns
-$kick @user – kick user
-$ban @user – ban user
-$role @user (role) – give role
-$demo @user – remove highest role
-$to @user (minutes) – timeout user
-$rto @user – remove timeout`
++warn @user – warn user
++warns @user – check warns
++clearwarn @user – reset warns
++kick @user – kick user
++ban @user – ban user
++role @user (role) – give role
++demo @user – remove highest role
++to @user (minutes) – timeout user
++rto @user – remove timeout`
     );
   }
 
