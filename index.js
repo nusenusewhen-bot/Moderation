@@ -11,14 +11,11 @@ const client = new Client({
 });
 
 // ROLE IDS
-const ROLE_WARN = "1467183999146528962";
-const ROLE_KICK = "1467184107594186843";
-const ROLE_BAN  = "1467184373496283348";
+const ROLE_WARN = "1467183999146528962"; // LOW MOD
+const ROLE_KICK = "1467184107594186843"; // MID MOD
+const ROLE_BAN  = "1467184373496283348"; // ADMIN
 
-// PREFIX (CHANGED HERE)
 const PREFIX = "+";
-
-// WARN FILE
 const WARN_FILE = "./warns.json";
 
 // LOAD WARNS
@@ -29,9 +26,16 @@ if (fs.existsSync(WARN_FILE)) {
   fs.writeFileSync(WARN_FILE, JSON.stringify({}, null, 2));
 }
 
-// SAVE WARNS
 function saveWarns() {
   fs.writeFileSync(WARN_FILE, JSON.stringify(warns, null, 2));
+}
+
+// PERMISSION LEVELS
+function permLevel(member) {
+  if (member.roles.cache.has(ROLE_BAN)) return 3;
+  if (member.roles.cache.has(ROLE_KICK)) return 2;
+  if (member.roles.cache.has(ROLE_WARN)) return 1;
+  return 0;
 }
 
 client.once("ready", () => {
@@ -47,29 +51,26 @@ client.on("messageCreate", async (message) => {
 
   const member = message.member;
   const target = message.mentions.members.first();
+  const level = permLevel(member);
 
-  const hasRole = (id) => member.roles.cache.has(id);
-
-  // COMMAND LIST
+  // COMMAND LIST (MID+)
   if (cmd === "cmds") {
-    if (!hasRole(ROLE_WARN)) return;
+    if (level < 2) return;
     return message.reply(
 `**Commands**
-+warn @user – warn user
-+warns @user – check warns
-+clearwarn @user – reset warns
-+kick @user – kick user
-+ban @user – ban user
-+role @user (role) – give role
-+demo @user – remove highest role
-+to @user (minutes) – timeout user
-+rto @user – remove timeout`
++warn / +warns
++to / +rto
++clearwarn
++kick
++ban
++role
++demo`
     );
   }
 
-  // WARN
+  // WARN (LOW+)
   if (cmd === "warn") {
-    if (!hasRole(ROLE_WARN) || !target) return;
+    if (level < 1 || !target) return;
 
     const id = target.id;
     warns[id] = (warns[id] || 0) + 1;
@@ -86,46 +87,46 @@ client.on("messageCreate", async (message) => {
     }
   }
 
-  // WARNS CHECK
+  // WARNS CHECK (LOW+)
   if (cmd === "warns") {
-    if (!hasRole(ROLE_WARN) || !target) return;
+    if (level < 1 || !target) return;
     message.reply(`${target.user.tag} has ${warns[target.id] || 0} warns.`);
   }
 
-  // CLEAR WARNS
+  // CLEAR WARNS (MID+)
   if (cmd === "clearwarn") {
-    if (!hasRole(ROLE_WARN) || !target) return;
+    if (level < 2 || !target) return;
     warns[target.id] = 0;
     saveWarns();
     message.reply(`${target.user.tag}'s warns cleared.`);
   }
 
-  // KICK
+  // TIMEOUT / MUTE (LOW+)
+  if (cmd === "to") {
+    if (level < 1 || !target) return;
+    const minutes = parseInt(args[0]);
+    if (isNaN(minutes)) return;
+    await target.timeout(minutes * 60 * 1000);
+    message.reply(`${target.user.tag} muted for ${minutes} minutes.`);
+  }
+
+  // REMOVE TIMEOUT (LOW+)
+  if (cmd === "rto") {
+    if (level < 1 || !target) return;
+    await target.timeout(null);
+    message.reply(`${target.user.tag} unmuted.`);
+  }
+
+  // KICK (MID+)
   if (cmd === "kick") {
-    if (!hasRole(ROLE_KICK) || !target) return;
+    if (level < 2 || !target) return;
     await target.kick();
     message.reply(`${target.user.tag} kicked.`);
   }
 
-  // BAN
-  if (cmd === "ban") {
-    if (!hasRole(ROLE_BAN) || !target) return;
-    await target.ban();
-    message.reply(`${target.user.tag} banned.`);
-  }
-
-  // ROLE
-  if (cmd === "role") {
-    if (!hasRole(ROLE_WARN) || !target) return;
-    const role = message.mentions.roles.first();
-    if (!role) return;
-    await target.roles.add(role);
-    message.reply(`Role added to ${target.user.tag}`);
-  }
-
-  // DEMO
+  // DEMO (MID+)
   if (cmd === "demo") {
-    if (!hasRole(ROLE_KICK) || !target) return;
+    if (level < 2 || !target) return;
     const highest = target.roles.highest;
     if (highest && highest.id !== message.guild.id) {
       await target.roles.remove(highest);
@@ -133,20 +134,20 @@ client.on("messageCreate", async (message) => {
     }
   }
 
-  // TIMEOUT
-  if (cmd === "to") {
-    if (!hasRole(ROLE_WARN) || !target) return;
-    const minutes = parseInt(args[0]);
-    if (isNaN(minutes)) return;
-    await target.timeout(minutes * 60 * 1000);
-    message.reply(`${target.user.tag} timed out for ${minutes} minutes.`);
+  // BAN (ADMIN)
+  if (cmd === "ban") {
+    if (level < 3 || !target) return;
+    await target.ban();
+    message.reply(`${target.user.tag} banned.`);
   }
 
-  // REMOVE TIMEOUT
-  if (cmd === "rto") {
-    if (!hasRole(ROLE_WARN) || !target) return;
-    await target.timeout(null);
-    message.reply(`Timeout removed for ${target.user.tag}`);
+  // ROLE (ADMIN)
+  if (cmd === "role") {
+    if (level < 3 || !target) return;
+    const role = message.mentions.roles.first();
+    if (!role) return;
+    await target.roles.add(role);
+    message.reply(`Role added to ${target.user.tag}`);
   }
 });
 
