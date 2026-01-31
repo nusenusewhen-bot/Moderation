@@ -100,7 +100,7 @@ client.on("messageCreate", async (message) => {
     if (level < 1 || !target) return;
     if (!canActOn(member, target)) return message.reply("You cannot warn this member.");
 
-    const reason = args.join(" ") || "No reason provided";
+    const reason = args.filter(a => !a.includes("<@")).join(" ") || "No reason provided";
 
     const id = target.id;
     warns[id] = (warns[id] || 0) + 1;
@@ -149,12 +149,13 @@ client.on("messageCreate", async (message) => {
     if (level < 1 || !target) return;
     if (!canActOn(member, target)) return message.reply("You cannot mute this member.");
 
-    const minutes = parseInt(args[0]);
-    if (isNaN(minutes)) return message.reply("Please provide a valid number of minutes.");
+    // Parse minutes after the mention
+    const minutesArg = args.find(a => !a.includes("<@") && !isNaN(parseInt(a)));
+    if (!minutesArg) return message.reply("Please provide a valid number of minutes.");
+    const minutes = parseInt(minutesArg);
 
     await target.timeout(minutes * 60 * 1000);
 
-    // Log with button
     const logChannel = await message.guild.channels.fetch(LOG_CHANNEL).catch(() => null);
     if (logChannel) {
       const row = new ActionRowBuilder().addComponents(
