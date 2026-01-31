@@ -57,10 +57,9 @@ client.on(Events.InteractionCreate, async interaction => {
 
   const [action, targetId] = interaction.customId.split("_");
   const member = interaction.member;
-
   if (!interaction.guild) return;
 
-  const target = interaction.guild.members.cache.get(targetId);
+  const target = await interaction.guild.members.fetch(targetId).catch(() => null);
   if (!target) return interaction.reply({ content: "Member not found.", ephemeral: true });
 
   if (!canActOn(member, target)) return interaction.reply({ content: "You cannot unmute this member.", ephemeral: true });
@@ -105,8 +104,10 @@ client.on("messageCreate", async (message) => {
 
     const id = target.id;
     warns[id] = (warns[id] || 0) + 1;
+    saveWarns();
 
-    const logChannel = message.guild.channels.cache.get(LOG_CHANNEL);
+    // Fetch log channel
+    const logChannel = await message.guild.channels.fetch(LOG_CHANNEL).catch(() => null);
     if (logChannel) {
       logChannel.send(
         `**Warn:** ${target.user.tag} warned by ${member.user.tag}\nReason: ${reason}\nTotal warns: ${warns[id]}\nTime: <t:${Math.floor(Date.now()/1000)}:f>`
@@ -115,16 +116,16 @@ client.on("messageCreate", async (message) => {
 
     // Reset warns at 3
     if (warns[id] >= 3) {
-      warns[id] = 0;
-      // Remove highest role
+      warns[id] = 0; // reset to 0
       const highest = target.roles.highest;
       if (highest && highest.id !== message.guild.id) {
         await target.roles.remove(highest);
       }
-      if (logChannel) logChannel.send(`⚠️ ${target.user.tag} reached 3 warns. Warns reset to 0 and highest role removed.`);
+      if (logChannel) {
+        logChannel.send(`⚠️ ${target.user.tag} reached 3 warns. Warns reset to 0 and highest role removed.`);
+      }
     }
 
-    saveWarns();
     return message.reply(`${target.user.tag} warned. Total warns: ${warns[id]}`);
   }
 
@@ -154,7 +155,7 @@ client.on("messageCreate", async (message) => {
     await target.timeout(minutes * 60 * 1000);
 
     // Log with button
-    const logChannel = message.guild.channels.cache.get(LOG_CHANNEL);
+    const logChannel = await message.guild.channels.fetch(LOG_CHANNEL).catch(() => null);
     if (logChannel) {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
